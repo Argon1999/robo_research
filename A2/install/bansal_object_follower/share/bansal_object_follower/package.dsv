@@ -1,0 +1,9 @@
+source;share/bansal_object_follower/hook/pythonpath.ps1
+source;share/bansal_object_follower/hook/pythonpath.dsv
+source;share/bansal_object_follower/hook/pythonpath.sh
+source;share/bansal_object_follower/hook/ament_prefix_path.ps1
+source;share/bansal_object_follower/hook/ament_prefix_path.dsv
+source;share/bansal_object_follower/hook/ament_prefix_path.sh
+source;../../build/bansal_object_follower/share/bansal_object_follower/hook/pythonpath_develop.ps1
+source;../../build/bansal_object_follower/share/bansal_object_follower/hook/pythonpath_develop.dsv
+source;../../build/bansal_object_follower/share/bansal_object_follower/hook/pythonpath_develop.sh
