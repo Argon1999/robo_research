@@ -47,22 +47,22 @@ class ObjectRangeNode(Node):
         
         if self.latest_scan is None:
             return
-        
-        # Assuming object_info contains [x, y] or angle index
-        # Extract angle from object detection (adjust based on your detect_object output)
-        angle_idx = int(self.object_info[0])
-        
-        # Get range from lidar scan at detected angle
-        if angle_idx < len(self.latest_scan.ranges):
-            distance = self.latest_scan.ranges[angle_idx]
-            angle = self.latest_scan.angle_min + (angle_idx * self.latest_scan.angle_increment)
-            
-            # Publish result: [distance, angle]
-            result = Float32MultiArray(data=[float(distance), float(angle)])
-            self.range_publisher.publish(result)
-            
-            self.get_logger().info(f'Distance: {distance:.2f}m, Angle: {math.degrees(angle):.2f}°')
 
+        # Calculate angle to object based on frame width and lidar scan parameters
+        angle_increment = self.latest_scan.angle_increment
+        angle_min = self.latest_scan.angle_min
+        angle_max = self.latest_scan.angle_max
+        num_ranges = len(self.latest_scan.ranges)
+        # Calculate the angle corresponding to the detected object
+        object_angle = (self.x / self.frame_width) * (angle_max - angle_min) + angle_min
+        # Find the closest range measurement at the calculated angle
+        index = int((object_angle - angle_min) / angle_increment)
+        if 0 <= index < num_ranges:
+            object_range = self.latest_scan.ranges[index]
+            # Publish the range and angle as a Float32MultiArray
+            range_msg = Float32MultiArray()
+            range_msg.data = [object_range, object_angle]
+            self.range_publisher.publish(range_msg)
 
 def main(args=None):
     rclpy.init(args=args)
