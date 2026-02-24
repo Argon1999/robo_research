@@ -3,9 +3,9 @@ from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
 from geometry_msgs.msg import Twist
 
-class ChaseObjectNode(Node):
+class ChaseObject(Node):
     def __init__(self):
-        super().__init__('chase_object_node')
+        super().__init__('chase_object')
         
         # Subscribe to object range topic
         self.subscription = self.create_subscription(
@@ -53,7 +53,7 @@ class ChaseObjectNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = ChaseObjectNode()
+    node = ChaseObject()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

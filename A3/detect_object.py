@@ -18,7 +18,7 @@ class FindObject(Node):
 
 	def __init__(self):		
 		# Creates the node.
-		super().__init__('Object_Finder_Node')
+		super().__init__('detect_object')
 
 		# Set Parameters
 		self.declare_parameter('show_image_bool', False)
