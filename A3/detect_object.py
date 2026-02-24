@@ -98,7 +98,7 @@ class FindObject(Node):
 				msg  = Point()
 				msg.x = (x + w) / 2
 				msg.y = (y + h) / 2
-				msg.z = self._imgBGR.shape[1]/2
+				msg.z = self._imgBGR.shape[1]
 				self._location_publisher.publish(msg)
 
 
