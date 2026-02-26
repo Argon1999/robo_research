@@ -93,13 +93,14 @@ class FindObject(Node):
 		cntr, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 		if cntr:
 			big = max(cntr, key=cv2.contourArea)
-			if cv2.contourArea(big) > 2500:
+			if cv2.contourArea(big) > 500:
 				x,y,w,h = cv2.boundingRect(big)
 				msg  = Point()
-				msg.x = (x + w) / 2
-				msg.y = (y + h) / 2
-				msg.z = self._imgBGR.shape[1]
+				msg.x = (2*x + w) / 2
+				msg.y = (2*y -  h) / 2
+				msg.z = float(self._imgBGR.shape[1])
 				self._location_publisher.publish(msg)
+				print(f"{msg.x=}, {msg.y=}")
 
 
 def main():
