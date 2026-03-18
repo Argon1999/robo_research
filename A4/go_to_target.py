@@ -17,21 +17,20 @@ class GoToTargetNode(Node):
     def __init__(self):
         super().__init__('go_to_target')
         
-        self.waypoints = self.load_waypoints()
+        self.waypoints = [[1.5, 0], [1.5, 1.4], [0,1.4]]
         self.current_waypoint_idx = 0
         self.current_pose = None
         self.state = State.IDLE
         self.obstacle_detected = False
-        self.min_distance = float('inf')
         self.latest_scan = None
-        
+        self.front_distance = float('inf')
         self.get_logger().info(f'Loaded {len(self.waypoints)} waypoints')
         
         if self.waypoints:
             self.state = State.MOVING_TO_WAYPOINT
 
         self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.odom_subscription = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.odom_subscription = self.create_subscription(Odometry, '/fixed_odom', self.odom_callback, 10)
         self.laser_subscription = self.create_subscription(Point, '/object_location', self.laser_callback, 10)
         
     
@@ -48,7 +47,9 @@ class GoToTargetNode(Node):
         return waypoints
     
     def odom_callback(self, msg):
-        self.current_pose = msg.pose.pose.position
+        self.current_x = msg.pose.pose.position.x
+        self.current_y = msg.pose.pose.position.y
+        print(f"Current position: x={self.current_x:.2f}, y={self.current_y:.2f}")
         self.orientation = msg.pose.pose.orientation
         
         if self.state == State.MOVING_TO_WAYPOINT:
@@ -62,8 +63,6 @@ class GoToTargetNode(Node):
         self.latest_scan = msg
         self.front_distance = msg.data[0] if msg.data else float('inf')
 
-        if State.AVOIDING_OBSTACLE:
-            return
         
         # if self.min_distance < 0.3:
         #     if self.state == State.MOVING_TO_WAYPOINT:
@@ -82,16 +81,19 @@ class GoToTargetNode(Node):
             return
 
         target = self.waypoints[self.current_waypoint_idx]
-        dx = target[0] - self.current_pose.x
-        dy = target[1] - self.current_pose.y
+        dx = target[0] - self.current_x
+        dy = target[1] - self.current_y
+        print(f"Moving to waypoint {self.current_waypoint_idx}: target=({target[0]:.2f}, {target[1]:.2f}), dx={dx:.2f}, dy={dy:.2f})")
         distance = math.sqrt(dx**2 + dy**2)
         
         if distance < 0.1:
+            self.stop()
             self.current_waypoint_idx += 1
             self.state = State.REACHED_WAYPOINT
             self.turn90_degrees()
             self.get_logger().info(f'Reached waypoint {self.current_waypoint_idx}')
             time.sleep(5)  # Wait before moving to next waypoint
+            self.state = State.MOVING_TO_WAYPOINT
             return
         
         if self.front_distance < 0.3:
@@ -100,22 +102,25 @@ class GoToTargetNode(Node):
 
 
         else:
+            x = (math.atan2(dy, dx) - self.orientation.z)*0.5
+            print(f"Turning: {x:.2f}")
+            print(distance)
             cmd = Twist()
-            cmd.linear.x = min(0.5, distance * 0.3)
-            cmd.angular.z = math.atan2(dy, dx) * 0.5
+            cmd.linear.x = min(0.2, distance)
+            cmd.angular.z = x
             self.publisher_.publish(cmd)
     
     def turn90_degrees(self, clockwise=False):
           # Implement turning logic here in a bit
         cmd = Twist()
-        cmd.angular.z = -1 if clockwise else 1
+        cmd.angular.z = -1.0 if clockwise else 1.0
         self.publisher_.publish(cmd)
-        time.sleep(2)  # Adjust sleep time based on actual turning speed
+        time.sleep(1.9)  # Adjust sleep time based on actual turning speed
+        self.stop()  # Stop after turning
 
 
     def avoid_obstacle(self, laser_msg):
         self.turn90_degrees(clockwise=True)
-        time.sleep(2)  # Adjust sleep time based on actual turning speed
         cmd = Twist()
         cmd.linear.x = 0.5
         self.publisher_.publish(cmd)

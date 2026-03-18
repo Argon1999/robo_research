@@ -25,6 +25,8 @@ class print_transformed_odom(Node):
             '/odom',
             self.odom_callback,
             1)
+
+        self.odom_pub = self.create_publisher(Odometry, '/fixed_odom', 1)
         self.odom_sub  # prevent unused variable warning
 
     def odom_callback(self, data):
@@ -53,7 +55,10 @@ class print_transformed_odom(Node):
         self.globalPos.x = Mrot.item((0,0))*position.x + Mrot.item((0,1))*position.y - self.Init_pos.x
         self.globalPos.y = Mrot.item((1,0))*position.x + Mrot.item((1,1))*position.y - self.Init_pos.y
         self.globalAng = orientation - self.Init_ang
-    
+        x = Odometry()
+        x.pose.pose.position = self.globalPos
+        x.pose.pose.orientation = Quaternion(x=0.0, y=0.0, z=self.globalAng, w=self.globalAng)
+        self.odom_pub.publish(x)
         self.get_logger().info('Transformed global pose is x:{}, y:{}, a:{}'.format(self.globalPos.x,self.globalPos.y,self.globalAng))
     
 def main(args=None):
