@@ -23,7 +23,6 @@ class GoToTargetNode(Node):
         self.state = State.IDLE
         self.obstacle_detected = False
         self.latest_scan = None
-        self.front_distance = float('inf')
         self.get_logger().info(f'Loaded {len(self.waypoints)} waypoints')
         
         if self.waypoints:
@@ -49,28 +48,18 @@ class GoToTargetNode(Node):
     def odom_callback(self, msg):
         self.current_x = msg.pose.pose.position.x
         self.current_y = msg.pose.pose.position.y
-        print(f"Current position: x={self.current_x:.2f}, y={self.current_y:.2f}")
-        self.orientation = msg.pose.pose.orientation
+        # print(f"Current position: x={self.current_x:.2f}, y={self.current_y:.2f}")
+        self.globalAng = msg.pose.pose.orientation.z
         
-        if self.state == State.MOVING_TO_WAYPOINT:
-            self.move_to_waypoint()
-        elif self.state == State.AVOIDING_OBSTACLE:
-            if not self.obstacle_detected:
-                self.state = State.MOVING_TO_WAYPOINT
     
     def laser_callback(self, msg):
         # self.min_distance = min(msg.ranges) if msg.ranges else float('inf')
-        self.latest_scan = msg
-        self.front_distance = msg.data[0] if msg.data else float('inf')
+        if msg.x == 0 and msg.y == 0:
+            self.obstacle_detected = False
+        else:
+            self.obstacle_detected = True        
 
-        
-        # if self.min_distance < 0.3:
-        #     if self.state == State.MOVING_TO_WAYPOINT:
-        #         self.state = State.AVOIDING_OBSTACLE
-        #         self.obstacle_detected = True
-        #     self.avoid_obstacle(msg)
-        # else:
-        #     self.obstacle_detected = False
+        self.obstacle = [msg.x, msg.y]
     
     def move_to_waypoint(self):
         if self.state == State.AVOIDING_OBSTACLE:
