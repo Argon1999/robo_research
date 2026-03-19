@@ -53,6 +53,7 @@ class ObjectRange(Node):
         # Calculate the index range for the front 60 degrees
         index_60 = int((front_60 - angle_min) / angle_increment)
         pts = self.get_valid_points(index_60, angle_min, angle_increment, num_ranges)
+        print(f"Valid points: {len(pts)}")
 
         clusters = self.cluster_points(pts)
         if not clusters:
@@ -60,8 +61,9 @@ class ObjectRange(Node):
             self.pubish_zero_vector()
             return
         
-        filtered_clusters = [cluster for cluster in clusters if len(cluster) >= 5 and self.is_not_wall(cluster)]
+        filtered_clusters = [cluster for cluster in clusters if len(cluster) >= 3 and self.is_not_wall(cluster)]
         if not filtered_clusters:
+            # print(clusters)
             self.get_logger().info("No clusters with enough points found")
             self.pubish_zero_vector()
             return
@@ -69,6 +71,7 @@ class ObjectRange(Node):
         # Find the closest cluster
         closest_cluster = min(filtered_clusters, key=lambda c: self.get_cluster_distance(c))
         x, y = self.get_cluster_center(closest_cluster)
+        print(f"Closest object at x={x:.2f}, y={y:.2f}")
 
         # Publish the object location
         object_location = Vector3()

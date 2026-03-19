@@ -3,7 +3,7 @@ from math import dist
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, Vector3
 from geometry_msgs.msg import Point
 from enum import Enum
 import time
@@ -21,21 +21,23 @@ class GoToTargetNode(Node):
         
         self.waypoints = [[1.5, 0], [1.5, 1.4], [0,1.4]]
         self.current_waypoint_idx = 0
-        self.current_pose = None
         self.state = State.IDLE
         self.obstacle_detected = False
         self.latest_scan = None
         self.get_logger().info(f'Loaded {len(self.waypoints)} waypoints')
         self.max_speed = 0.2
+        self.current_x = 0.0
+        self.current_y = 0.0
+        self.globalAng = 0.0
         
         if self.waypoints:
             self.state = State.MOVING_TO_WAYPOINT
 
-        self.tolerance = 0.1
+        self.tolerance = 0.05
 
         self.publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
         self.odom_subscription = self.create_subscription(Odometry, '/fixed_odom', self.odom_callback, 10)
-        self.laser_subscription = self.create_subscription(Point, '/object_location', self.laser_callback, 10)
+        self.laser_subscription = self.create_subscription(Vector3, '/object_location', self.laser_callback, 10)
         self.rate = 0.1
         self.loop = self.create_timer(self.rate, self.move_to_waypoint)
 
@@ -79,27 +81,26 @@ class GoToTargetNode(Node):
         target = self.waypoints[self.current_waypoint_idx]
         dx = target[0] - self.current_x
         dy = target[1] - self.current_y
-        dir = np.array([dx, dy])
-
-        # print(f"Moving to waypoint {self.current_waypoint_idx}: target=({target[0]:.2f}, {target[1]:.2f}), dx={dx:.2f}, dy={dy:.2f})")
-        distance = np.linalg.norm(dir)
-
+        dire = np.array([dx, dy])
+        
+        print(f"Moving to waypoint {self.current_waypoint_idx}: target=({target[0]:.2f}, {target[1]:.2f}), dx={dx:.2f}, dy={dy:.2f})")
+        distance = np.linalg.norm(dire)
         if self.state == State.MOVING_TO_WAYPOINT:
             if distance < self.tolerance:
                 self.get_logger().info(f'Waypoint {self.current_waypoint_idx} reached!')
                 self.current_waypoint_idx += 1
-                self.state = State.REACHED_WAYPOINT
                 self.stop()
                 time.sleep(5)  # Wait before moving to next waypoint
                 return
             
+            
             if distance > 1e-6:
-                dir = dir / distance
+                dire = dire / distance
             else:
-                dir = np.array([1., 0.])
+                dire = np.array([1., 0.])
 
             repulsion_vec = np.array([0., 0.])
-            k = 1.0 #TODO tune this gain
+            k = 1.2 #TODO tune this gain
             k_rep = 1.5 #TODO tune this gain
 
 
@@ -114,12 +115,14 @@ class GoToTargetNode(Node):
                     repulsion = k_rep * (1/obs_dist - 1/0.5) 
                     
                     obstacle_dir = obs_global / np.linalg.norm(obs_global)
-                    repulsion_vec = repulsion * obstacle_dir 
-            direction = k * dir + repulsion_vec
+                    repulsion_vec = -repulsion * obstacle_dir 
+            
+            direction = k * dire + repulsion_vec
             direction_mag = np.linalg.norm(direction)
+            print(f"Direction: {direction}, magnitude: {direction_mag:.2f}, repulsion_vec: {repulsion_vec}, obs_dist: {obs_dist:.2f}")
 
             if direction_mag > 1e-6:
-                heading = np.atan2(direction[1], direction[0])
+                heading = np.arctan2(direction[1], direction[0])
                 heading_error = self.normalize_angle(heading - self.globalAng)
                 k_ang = 2.0 #TODO tune this gain
                 ang_vel = k_ang * heading_error
@@ -141,11 +144,15 @@ class GoToTargetNode(Node):
                 if abs(heading_error) > np.pi/4:
                     lin_vel *= 0.5
 
-                if obs_dist> 0.01 and obs_dist < 0.3 and abs(lin_vel) < 0.05 :
-                    lin_vel  = 0.05
+                if obs_dist> 0.01 and obs_dist < 0.3 and abs(lin_vel) < 0.1 :
+                    lin_vel  = 0.1
             else:
                 ang_vel = 0.0
                 lin_vel = 0.0
+
+            lin_vel = np.clip(lin_vel, -0.2, 0.2)
+            ang_vel = np.clip(ang_vel, -1.0, 1.0)
+            print(f"Publishing cmd_vel: linear={lin_vel:.2f}, angular={ang_vel:.2f}")
 
             cmd = Twist()
             cmd.linear.x = lin_vel
@@ -182,7 +189,6 @@ class GoToTargetNode(Node):
     def stop(self):
         cmd = Twist()
         self.publisher_.publish(cmd)
-        self.state = State.IDLE
 
 def main(args=None):
     rclpy.init(args=args)
