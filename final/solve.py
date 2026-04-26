@@ -377,7 +377,7 @@ class MazeSolver(Node):
         is_red_present = r_count > (total_pixels * 0.05)
         is_blue_present = b_count > (total_pixels * 0.05)
         
-        return is_blue_present, is_red_present
+        return not is_red_present, is_red_present
 
     # --- SOUND FUNCTIONS ---
 
