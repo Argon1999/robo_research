@@ -119,7 +119,7 @@ class MazeSolver(Node):
         self.music_thread = None
 
         # --- 2. Dynamic Model Loading ---
-        pkg_share = get_package_share_directory('autobots_sign_follower')
+        pkg_share = get_package_share_directory('bansal_maze_solver')
         models_dir = os.path.join(pkg_share, 'models')
         model_files = glob.glob(os.path.join(models_dir, '*.pkl'))
         
